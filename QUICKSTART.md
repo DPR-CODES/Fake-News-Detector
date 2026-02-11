@@ -8,7 +8,7 @@
 pip install -r requirements.txt
 ```
 
-If you encounter issues, install packages individually:
+If something breaks during install (it happens), try this instead:
 
 ```bash
 pip install streamlit pandas numpy scikit-learn nltk wordcloud matplotlib plotly
@@ -20,14 +20,14 @@ pip install streamlit pandas numpy scikit-learn nltk wordcloud matplotlib plotly
 python train_model.py
 ```
 
-**Output**: You'll see:
-- Dataset loading
-- Text preprocessing
+This'll take a minute or two depending on your machine. You'll see a bunch of output:
+- NLTK data downloading
+- Dataset loading (currently just samples, but you can replace with real data)
+- Text preprocessing happening
 - Model training
-- Accuracy metrics
-- `model.pkl` and `vectorizer.pkl` files created
+- Final accuracy metrics
 
-**Expected Output**:
+**What you should see**:
 ```
 🚀 Starting Fake News Detection Model Training
 
@@ -54,6 +54,11 @@ Accuracy: 100.00%
 
 ✓ Model saved successfully!
 ```
+
+This creates two files:
+- `model.pkl` - Your trained model
+- `vectorizer.pkl` - The text processor
+
 
 ### Step 3: Run the App
 

@@ -1,8 +1,10 @@
-# 🔍 FAKE NEWS DETECTOR - COMPLETE PROJECT PACKAGE
+# 🔍 FAKE NEWS DETECTOR - START HERE
 
-## 📦 What's Included
+Welcome! You've got yourself a complete, working Fake News Detection app. Here's what you actually need to know.
 
-This folder contains a **complete, production-ready** AI-powered Fake News Detection web application.
+## 📦 What's in the Box
+
+You've got:
 
 ### ✨ Highlights:
 ✅ **Attractive Modern UI** - Beautiful Streamlit interface with gradients and animations

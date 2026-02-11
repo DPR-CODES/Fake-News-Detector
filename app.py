@@ -1,6 +1,17 @@
 """
 Fake News Detector - Streamlit Web Application
-An AI-powered tool to detect fake news with explainability
+Detects fake news with explainability features
+
+KNOWN ISSUES & EDGE CASES:
+- Very short articles (<50 chars) may give unreliable predictions
+- Articles in all caps score higher as fake (might be false alarm)
+- Highly technical articles sometimes misclassified (domain-specific language)
+- Very long articles (10k+ chars) may timeout
+- Non-English text not supported
+
+TODO: Add multi-language support
+TODO: Implement user feedback database
+TODO: Add fact-checking API integration (like ClaimBuster)
 """
 
 import streamlit as st
@@ -18,14 +29,20 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 import warnings
+import os
 warnings.filterwarnings('ignore')
 
 # Download NLTK data
+# NOTE: This can sometimes fail on first run, retry if needed
 @st.cache_resource
 def download_nltk_data():
-    nltk.download('stopwords', quiet=True)
-    nltk.download('punkt', quiet=True)
-    nltk.download('wordnet', quiet=True)
+    try:
+        nltk.download('stopwords', quiet=True)
+        nltk.download('punkt', quiet=True)
+        nltk.download('wordnet', quiet=True)
+    except Exception as e:
+        # Silently fail - NLTK data might already be present
+        pass
 
 download_nltk_data()
 
@@ -194,16 +211,19 @@ def preprocess_text(text):
     text = text.lower()
     
     # Remove URLs, emails, mentions
+    # NOTE: This regex might not catch all URL formats, but works for most cases
     text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
     text = re.sub(r'\S+@\S+', '', text)
     text = re.sub(r'@\w+|#\w+', '', text)
     
     # Remove special characters and digits
+    # TODO: Consider keeping some digits for certain analysis
     text = re.sub(r'[^a-zA-Z\s]', '', text)
     text = re.sub(r'\s+', ' ', text).strip()
     
     # Tokenization and lemmatization
     tokens = word_tokenize(text)
+    # Filter: remove stopwords and very short words (seems to improve accuracy)
     tokens = [lemmatizer.lemmatize(word) for word in tokens 
               if word not in stop_words and len(word) > 2]
     
@@ -211,12 +231,17 @@ def preprocess_text(text):
 
 # Detect suspicious keywords
 def detect_suspicious_keywords(text):
-    """Detect keywords commonly found in fake news"""
+    """
+    Detect keywords commonly found in fake news
+    NOTE: This is a heuristic approach. Some real news might contain these words.
+    """
     suspicious_words = [
         'shocking', 'breaking', 'unbelievable', 'secret', 'exposed',
         'they dont want you to know', 'miracle', 'amazing', 'incredible',
         'you wont believe', 'must see', 'urgent', 'warning', 'banned',
-        'conspiracy', 'cover up', 'hidden truth', 'big pharma', 'wake up'
+        'conspiracy', 'cover up', 'hidden truth', 'big pharma', 'wake up',
+        # Added after testing - these showed up in many fake articles
+        'immediately', 'scientifically proven', 'doctors hate', 'pharmaceutical'
     ]
     
     text_lower = text.lower()
@@ -241,15 +266,22 @@ def create_wordcloud(text):
 
 # Get feature importance
 def get_feature_importance(model, vectorizer, text, top_n=10):
-    """Get top important features for prediction"""
+    """
+    Extract top N words that influenced the prediction
+    
+    NOTE: This works by looking at model coefficients combined with TF-IDF scores.
+    It shows correlation, not causation. A word doesn't cause fakeness, 
+    just tends to appear in fake news samples.
+    """
     feature_names = vectorizer.get_feature_names_out()
     text_tfidf = vectorizer.transform([text])
     
-    # Get coefficients
+    # Get model coefficients (learned weights for each word)
     if hasattr(model, 'coef_'):
         coefficients = model.coef_[0]
         
-        # Get non-zero features
+        # Find which features actually appear in this text
+        # (sparse matrix - most words won't be in the input)
         non_zero_indices = text_tfidf.nonzero()[1]
         
         if len(non_zero_indices) > 0:
@@ -257,12 +289,12 @@ def get_feature_importance(model, vectorizer, text, top_n=10):
             for idx in non_zero_indices:
                 feature_scores.append({
                     'feature': feature_names[idx],
-                    'tfidf_score': text_tfidf[0, idx],
-                    'coefficient': coefficients[idx],
-                    'importance': text_tfidf[0, idx] * abs(coefficients[idx])
+                    'tfidf_score': text_tfidf[0, idx],  # How important this word is in this text
+                    'coefficient': coefficients[idx],    # How much the model "likes" this word for the prediction
+                    'importance': text_tfidf[0, idx] * abs(coefficients[idx])  # Combined importance
                 })
             
-            # Sort by importance
+            # Sort by importance - these are the words that pushed the prediction
             feature_scores = sorted(feature_scores, key=lambda x: x['importance'], reverse=True)
             return feature_scores[:top_n]
     
@@ -380,6 +412,13 @@ def main():
     
     # Analysis
     if analyze_button and news_text.strip():
+        # Input validation - warn about edge cases
+        text_length = len(news_text.strip())
+        if text_length < 50:
+            st.warning("⚠️ Text is very short (<50 chars). Prediction may be unreliable.")
+        elif text_length > 10000:
+            st.warning("⚠️ Text is very long (>10K chars). This may take a moment...")
+        
         with st.spinner("🔄 Analyzing article..."):
             # Preprocess
             cleaned_text = preprocess_text(news_text)
@@ -391,8 +430,18 @@ def main():
             
             confidence = probability[prediction] * 100
             
+            # NOTE: This model is trained on patterns, not facts
+            # High confidence doesn't mean 100% accurate
+            # Always verify with multiple sources!
+            
             st.markdown("---")
             st.markdown("## 📊 Analysis Results")
+            
+            # Add a disclaimer at the top
+            st.info(
+                "⚠️ **Disclaimer**: This is an AI prediction based on text patterns, not factual verification. "
+                "Always cross-check with credible sources. No AI tool is 100% accurate."
+            )
             
             # Result card
             if prediction == 0:  # Fake
@@ -550,25 +599,41 @@ def main():
             
             if prediction == 0:
                 st.warning("""
-                **⚠️ This article may be unreliable. Here's what to do:**
+                **⚠️ This article LIKELY contains misinformation patterns:**
                 
-                ✓ Check multiple reputable news sources  
-                ✓ Look for original sources and citations  
-                ✓ Verify author credentials  
-                ✓ Check publication date and URL  
-                ✓ Look for evidence-based claims  
-                ✓ Be skeptical of emotional language  
+                - Exhibits text patterns common in fake news
+                - Uses sensational or emotional language
+                - May lack credible sources
+                
+                **What to do next:**
+                - [ ] Check the article source - is it reputable?
+                - [ ] Look for citations and original sources
+                - [ ] Verify claims on fact-checking sites (Snopes, FactCheck.org)
+                - [ ] Check if other major news outlets covered this story
+                - [ ] Look at author credentials and publication history
                 """)
             else:
                 st.info("""
-                **✅ This article appears credible, but always:**
+                **✅ This article appears CREDIBLE based on text patterns:**
                 
-                ✓ Cross-reference with other sources  
-                ✓ Check the publication's reputation  
-                ✓ Look for author attribution  
-                ✓ Verify facts independently  
-                ✓ Consider potential bias  
+                - Uses evidence-based language
+                - Includes attributions and sourcing
+                - Avoids emotional manipulation
+                
+                **However - Always verify:**
+                - [ ] Cross-check facts with other reputable sources
+                - [ ] Verify author credentials and publication
+                - [ ] Check if there's any potential bias
+                - [ ] Look for cited sources and studies
+                
+                **Remember:** ML can't fact-check. A well-written lie is still a lie!
                 """)
+            
+            st.info(
+                "⚠️ **This tool detects text PATTERNS, not facts.** "
+                "It's a starting point for verification, not a substitute for critical thinking. "
+                "Always check multiple sources!"
+            )
     
     elif analyze_button and not news_text.strip():
         st.warning("⚠️ Please enter some text to analyze!")

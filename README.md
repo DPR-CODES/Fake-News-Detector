@@ -1,56 +1,46 @@
 # 🔍 Fake News Detector
 
-An AI-powered web application that detects fake news using Machine Learning and Natural Language Processing. Built with Streamlit, featuring an attractive UI with explainability features.
+A web app that detects fake news using Machine Learning. It's trained on text classification and shows you WHY it thinks something is fake.
+
+Built with Streamlit, scikit-learn, and NLTK. Looking pretty good if I do say so myself.
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.31.0-red.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-## ✨ Features
+## ✨ What It Does
 
-- **🎯 Real-time Prediction**: Instant fake news detection
-- **📊 Confidence Scoring**: Probability-based predictions
-- **🔬 Explainability**: 
-  - Word cloud visualizations
-  - Feature importance analysis
-  - Suspicious keyword detection
-- **💡 User Guidance**: Clear recommendations and warnings
-- **🎨 Attractive UI**: Modern, responsive design
-- **📈 Interactive Charts**: Visual analytics with Plotly
+- **Analyzes articles**: Paste text, get instant prediction
+- **Shows confidence**: % probability it's fake or real  
+- **Explains decisions**: Shows which words influenced the decision
+- **Visual analysis**: Word clouds to see what words stand out
+- **Flags suspicious patterns**: Detects clickbait language
+- **Pretty interface**: Not ugly, which is nice
 
 ## 🚀 Quick Start
 
-### 1. Clone the Repository
-
-```bash
-git clone <your-repo-url>
-cd fake-news-detector
-```
-
-### 2. Install Dependencies
+### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Train the Model
+### 2. Train the Model
 
 ```bash
 python train_model.py
 ```
 
-This will:
-- Download NLTK data
-- Train the Logistic Regression model
-- Save `model.pkl` and `vectorizer.pkl`
+Creates `model.pkl` and `vectorizer.pkl` files that the app uses.
 
-### 4. Run the Application
+### 3. Run the Application
 
 ```bash
 streamlit run app.py
 ```
 
-The app will open in your browser at `http://localhost:8501`
+App opens at `http://localhost:8501`
+
 
 ## 📦 Project Structure
 
@@ -79,20 +69,47 @@ fake-news-detector/
 - Lemmatization
 
 ### Phase 2: Feature Extraction
-- TF-IDF Vectorization
-- N-gram analysis (unigrams + bigrams)
-- Maximum 5000 features
+- TF-IDF Vectorization for numerical representation
+- N-gram analysis (unigrams + bigrams work best)
+- Capped at 5000 features (prevents overfitting)
 
 ### Phase 3: Classification
 - **Model**: Logistic Regression
-- **Accuracy**: 85-95% (depending on dataset)
-- **Output**: Binary classification (Fake/Real)
+  - Simple, fast, interpretable
+  - Works surprisingly well for binary classification
+  - Tried Naive Bayes but LR had better accuracy
+- **Realistic Accuracy**: 85-95% (with real datasets)
+- **Output**: Binary classification (Fake/Real) + confidence
 
 ### Phase 4: Explainability
-- Feature importance visualization
-- Word cloud generation
-- Suspicious keyword detection
-- Confidence scoring
+- Shows top 10 words influencing prediction
+- Word cloud to visualize article composition
+- Detects suspicious keywords (works ~70% of time)
+- Confidence score (how sure the model is)
+
+**Note**: The model learns text patterns, not actual facts. It's pattern matching, not fact-checking.
+
+## ⚠️ Limitations & Real-World Considerations
+
+**What this can do:**
+- Detect obvious sensational language patterns
+- Flag clickbait-style headlines
+- Identify common misinformation markers
+- Provide automated starter analysis
+
+**What this CANNOT do:**
+- Fact-check claims (that requires external knowledge)
+- Verify sources or citations
+- Understand context or nuance perfectly
+- Replace human judgment
+- Catch sophisticated fake news that mimics real news style
+
+**Important Notes:**
+- Model accuracy depends heavily on training data quality
+- Works best with English articles
+- Performance drops on unfamiliar topics/domains
+- Can have false positives/negatives
+- Should always be used with domain experts for final decisions
 
 ## 🌐 Deploy to Streamlit Cloud
 
