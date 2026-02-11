@@ -37,6 +37,8 @@ nltk.download('stopwords', quiet=True)
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)  # Needed for newer NLTK versions
 nltk.download('wordnet', quiet=True)
+nltk.download('omw-1.4', quiet=True)  # Open Multilingual Wordnet (required for lemmatizer)
+nltk.download('averaged_perceptron_tagger', quiet=True)  # For POS tagging in lemmatizer
 
 class FakeNewsDetector:
     def __init__(self):
@@ -94,10 +96,17 @@ class FakeNewsDetector:
         tokens = word_tokenize(text)
         
         # Remove stopwords and short words (len > 2 acts as filter)
-        tokens = [self.lemmatizer.lemmatize(word) for word in tokens 
-                  if word not in self.stop_words and len(word) > 2]
+        # Add error handling for missing NLTK data
+        processed_tokens = []
+        for word in tokens:
+            if word not in self.stop_words and len(word) > 2:
+                try:
+                    processed_tokens.append(self.lemmatizer.lemmatize(word))
+                except Exception:
+                    # If lemmatization fails, use word as-is
+                    processed_tokens.append(word)
         
-        return ' '.join(tokens)
+        return ' '.join(processed_tokens)
     
     def load_and_prepare_data(self):
         """

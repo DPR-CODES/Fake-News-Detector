@@ -36,13 +36,17 @@ warnings.filterwarnings('ignore')
 # NOTE: This can sometimes fail on first run, retry if needed
 @st.cache_resource
 def download_nltk_data():
+    """Download required NLTK datasets for NLP processing"""
     try:
+        # Required datasets
         nltk.download('stopwords', quiet=True)
         nltk.download('punkt', quiet=True)
-        nltk.download('wordnet', quiet=True)
+        nltk.download('punkt_tab', quiet=True)  # Tokenizer (newer versions)
+        nltk.download('wordnet', quiet=True)    # For lemmatization
+        nltk.download('omw-1.4', quiet=True)    # Open Multilingual Wordnet (required for lemmatizer)
+        nltk.download('averaged_perceptron_tagger', quiet=True)  # For POS tagging in lemmatizer
     except Exception as e:
-        # Silently fail - NLTK data might already be present
-        pass
+        st.warning(f"Note: Could not download all NLTK data. Some features may be limited: {str(e)}")
 
 download_nltk_data()
 
@@ -223,11 +227,20 @@ def preprocess_text(text):
     
     # Tokenization and lemmatization
     tokens = word_tokenize(text)
-    # Filter: remove stopwords and very short words (seems to improve accuracy)
-    tokens = [lemmatizer.lemmatize(word) for word in tokens 
-              if word not in stop_words and len(word) > 2]
     
-    return ' '.join(tokens)
+    # Filter: remove stopwords and very short words (seems to improve accuracy)
+    # Add try-except to handle missing NLTK data
+    processed_tokens = []
+    for word in tokens:
+        if word not in stop_words and len(word) > 2:
+            try:
+                processed_tokens.append(lemmatizer.lemmatize(word))
+            except Exception as e:
+                # If lemmatization fails, use the word as-is
+                # This can happen if WordNet data is missing
+                processed_tokens.append(word)
+    
+    return ' '.join(processed_tokens)
 
 # Detect suspicious keywords
 def detect_suspicious_keywords(text):
